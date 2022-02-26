@@ -6,6 +6,7 @@ var logger = require("morgan");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
+require("dotenv").config();
 
 var indexRouter = require("./routes/index");
 
@@ -13,13 +14,13 @@ var app = express();
 
 app.use(cors());
 
-mongoose.connect(
-  "mongodb+srv://demouser:demo1234@cluster0.qsdua.mongodb.net/myFirstDatabase?retryWrites=true&w=majority",
-  {
+mongoose
+  .connect(`${process.env.MONGO_CLUSTER_URL}`, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-  },
-);
+  })
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((err) => console.log(err));
 
 // view engine setup
 app.set("views", path.join(__dirname, "views"));

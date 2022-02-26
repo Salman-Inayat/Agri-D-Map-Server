@@ -20,7 +20,7 @@ var base64ToImage = (req, res, next) => {
     "base64",
     function (err) {
       console.log(err);
-    },
+    }
   );
   next();
 };
