@@ -5,9 +5,20 @@ const multer = require("multer");
 var fse = require("fs-extra");
 const User = require("../models/user.modal.js");
 
-const image_name = "image.jpg";
+const makeid = (length) => {
+  var result = "";
+  var characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  var charactersLength = characters.length;
+  for (var i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+  }
+  return result;
+};
 
 var base64ToImage = (req, res, next) => {
+  const image_name = `${makeid(10)}.jpg`;
+
   var base64Data = req.body.image;
   require("fs").writeFile(
     // for windows development
@@ -22,6 +33,8 @@ var base64ToImage = (req, res, next) => {
       console.log(err);
     }
   );
+
+  req.body.image_name = image_name;
   next();
 };
 
@@ -31,6 +44,7 @@ router.get("/", (req, res) => {
 
 router.post("/image-segment", base64ToImage, (req, res, next) => {
   const image = req.body.image;
+  const image_name = req.body.image_name;
 
   if (!image) {
     return res.status(400).send({ message: "Please upload an image." });
@@ -41,14 +55,10 @@ router.post("/image-segment", base64ToImage, (req, res, next) => {
   const segmentation = spawn("python", ["segment.py"]);
 
   segmentation.on("close", (code) => {
-    // res.write(image_name.replace("jpg", "png"));
-    console.log("File name sent");
-    console.log(`child process close all stdio with code ${code}`);
-
     const classification = spawn("python", ["inference.py"]);
 
     classification.stdout.on("data", (data) => {
-      res.send(`image.png ${data.toString()}`);
+      res.send(`${image_name} ${data.toString()}`);
       console.log(`Retrieving the data from inference.py: ${data.toString()}`);
     });
 
@@ -57,7 +67,7 @@ router.post("/image-segment", base64ToImage, (req, res, next) => {
 
       const images_folder = process.cwd() + "/u2net/images";
       const results_folder = process.cwd() + "/u2net/results";
-      // const output_folder = process.cwd() + "/output";
+      const output_folder = process.cwd() + "/output";
 
       fse.emptyDir(images_folder, (err) => {
         if (err) return console.error(err);
@@ -67,25 +77,20 @@ router.post("/image-segment", base64ToImage, (req, res, next) => {
         if (err) return console.error(err);
       });
 
-      // fse.emptyDir(output_folder, (err) => {
-      //   if (err) return console.error(err);
-      // });
+      fse.readdir(output_folder, (err, files) => {
+        if (err) {
+          console.log(err);
+        }
 
-      // fse.readdir(output_folder, (err, files) => {
-      //   if (err) {
-      //     console.log(err);
-      //   }
+        files.forEach((f) => {
+          const fileDir = path.join(output_folder, f);
+          const image_file = image_name.slice(0, -3) + "png";
 
-      //   files.forEach((f) => {
-      //     const fileDir = path.join(output_folder, f);
-      //     const image_file = file.filename.slice(0, -3) + "png";
-
-      //     if (f !== image_file) {
-      //       fse.unlinkSync(fileDir);
-      //     }
-      //   });
-      //   console.log("Output folder cleaned");
-      // });
+          if (f !== image_file) {
+            fse.unlinkSync(fileDir);
+          }
+        });
+      });
     });
   });
 });
