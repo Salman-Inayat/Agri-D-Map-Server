@@ -95,41 +95,45 @@ router.post("/image-segment", base64ToImage, (req, res, next) => {
   });
 });
 
-router.post("/login", (req, res) => {
-  console.log("req.body: ", req.body);
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-  const { email, password } = req.body;
-  // find the user by email in user table
+    const user = await User.findOne({ email: email, password: password });
 
-  User.findOne({ email: email }, (err, user) => {
-    if (user) {
-      if (password === user.password) {
-        res.send({ message: "login sucess", user: user });
-      } else {
-        res.send({ message: "wrong credentials" });
-      }
-    } else {
-      res.send("not register");
+    if (!user) {
+      return res.status(400).send({ message: "Invalid email or password" });
     }
-  });
+
+    res.send(user);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: "Something went wrong" });
+  }
 });
 
-router.post("/register", (req, res) => {
-  console.log(req.body);
+router.post("/register", async (req, res) => {
   const { name, email, password } = req.body;
-  User.findOne({ email: email }, (err, user) => {
-    if (user) {
-      res.send({ message: "user already exist" });
-    } else {
-      const user = new User({ name, email, password });
-      user.save((err) => {
-        if (err) {
-          res.send(err);
-        } else {
-          res.send({ message: "sucessfull" });
-        }
-      });
+
+  const user = await User.findOne({ email: email });
+
+  if (user) {
+    return res.status(400).send({ message: "User already exists" });
+  }
+
+  const newUser = await new User({
+    name: name,
+    email: email,
+    password: password,
+  });
+
+  newUser.save((err) => {
+    if (err) {
+      console.log(err);
+      return res.status(400).send({ message: "Something went wrong" });
     }
+
+    return res.send(newUser);
   });
 });
 
