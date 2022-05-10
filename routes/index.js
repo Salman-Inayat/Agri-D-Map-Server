@@ -43,8 +43,27 @@ router.get("/", (req, res) => {
 });
 
 router.post("/image-segment", base64ToImage, (req, res, next) => {
-  const image = req.body.image;
-  const image_name = req.body.image_name;
+  // const image = req.body.image;
+  // const image_name = req.body.image_name;
+
+  const { image, image_name, model } = req.body;
+
+  let pythonFileToRun = "";
+
+  switch (model) {
+    case "resnet18":
+      pythonFileToRun = "inference_resnet18.py";
+      break;
+    case "alexnet":
+      pythonFileToRun = "inference_alexnet.py";
+      break;
+    case "resnet50":
+      pythonFileToRun = "inference_resnet50.py";
+      break;
+
+    default:
+      pythonFileToRun = "inference_resnet18.py";
+  }
 
   if (!image) {
     return res.status(400).send({ message: "Please upload an image." });
@@ -55,7 +74,7 @@ router.post("/image-segment", base64ToImage, (req, res, next) => {
   const segmentation = spawn("python", ["segment.py"]);
 
   segmentation.on("close", (code) => {
-    const classification = spawn("python", ["inference.py"]);
+    const classification = spawn("python", [pythonFileToRun]);
 
     classification.stdout.on("data", (data) => {
       res.send(`${image_name} ${data.toString()}`);
